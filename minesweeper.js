@@ -6,16 +6,11 @@ var flaggedCells = [];
 var outOfPlay = [];
 var mines = [];
 
-function log(thing){
-    console.log(thing);
-}
-
 function execute() {
     gameInProgress = true;
     createTable(SIZE);
     makeMines();
 }
-
 
 function isFlagged(id) {
     var index = flaggedCells.indexOf(id);
@@ -98,7 +93,6 @@ function createTable(size) {
     table.appendChild(tableBody);
     body.appendChild(table);
 }
-
 
 function makeMines(){
     var ids = allCells.slice();
