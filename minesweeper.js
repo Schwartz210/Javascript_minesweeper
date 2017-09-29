@@ -1,21 +1,22 @@
 var SIZE = 25;
-var QUANTITYOFMINES = (SIZE * SIZE) / 12;
+var LEVELOFDIFFICULTY = [6, 5, 4, 3];
+var QUANTITYOFMINES = (SIZE * SIZE) / LEVELOFDIFFICULTY[0];
 var gameInProgress = false;
 var allCells = [];
 var flaggedCells = [];
 var outOfPlay = [];
 var mines = [];
+var firstCellPlayed = false;
 
 function log(thing){
     console.log(thing);
 }
 
+
 function execute() {
     gameInProgress = true;
     createTable(SIZE);
-    makeMines();
 }
-
 
 function isFlagged(id) {
     var index = flaggedCells.indexOf(id);
@@ -47,13 +48,20 @@ function isMine(id){
 function leftClick(){
     if (gameInProgress == false) {
         return false;
+    } else if (firstCellPlayed == false){
+        outOfPlay.push(this.id);
+        makeMines();
+        firstCellPlayed = true;
+        document.getElementById(this.id).src = getImageQuantity(getAdjacentMineQuantity(this.id));
     } else if (isFlagged(this.id)) {
         return false;
     } else if (isMine(this.id)){
-        detonate();
-    } else {
-        document.getElementById(this.id).src = 'img/red.png';
+        detonate(this.id);
+    } else if (getAdjacentMineQuantity(this.id) > 0){
+        document.getElementById(this.id).src = getImageQuantity(getAdjacentMineQuantity(this.id));
         outOfPlay.push(this.id);
+    } else if (getAdjacentMineQuantity(this.id) == 0){
+        zeroCascade(this.id);
     }
 }
 
@@ -99,9 +107,9 @@ function createTable(size) {
     body.appendChild(table);
 }
 
-
 function makeMines(){
     var ids = allCells.slice();
+    ids.splice(ids.indexOf(outOfPlay[0]),1);
     for (var iterator = 0; iterator < QUANTITYOFMINES; iterator++){
         var index = Math.floor(Math.random() * ids.length);
         var mine = ids[index];
@@ -110,10 +118,132 @@ function makeMines(){
     }
 }
 
-function detonate(){
+function detonate(id){
     for (var iterator = 0; iterator < QUANTITYOFMINES; iterator++){
-        var id = mines[iterator];
-        document.getElementById(id).src = 'img/mine.png';
-        gameInProgress = false;
+        var r1c1 = mines[iterator];
+        if (r1c1 == id){
+            document.getElementById(id).src = 'img/minex.png';
+        } else if (isFlagged(r1c1)) {
+            document.getElementById(r1c1).src = 'img/flag-true.png';
+        } else if (isFlagged(r1c1) == false) {
+            document.getElementById(r1c1).src = 'img/mine.png';
+        }
+    }
+    for (var iterator = 0; iterator < flaggedCells.length; iterator++){
+        var flag = flaggedCells[iterator];
+        if (isMine(flag) == false){
+            document.getElementById(flag).src = 'img/flag-false.png';
+        }
+    }
+    gameInProgress = false;
+}
+
+function getLowerAdjacent(rowOrColumn){
+    var minimum = 0;
+    if (rowOrColumn == 0){
+        minimum = rowOrColumn;
+    } else {
+        minimum = rowOrColumn - 1;
+    }
+    return minimum;
+}
+
+function getUpperAdjacent(rowOrColumn){
+    var maximum = 0;
+    if (rowOrColumn == SIZE - 1){
+        maximum = rowOrColumn;
+    } else {
+        maximum = rowOrColumn + 1;
+    }
+    return maximum;
+}
+
+function getRow(r1c1){
+    if (r1c1.length == 4){
+        return parseInt(r1c1.charAt(1));
+    } else if (r1c1.length == 5 && r1c1.indexOf('C') == 2) {
+        return parseInt(r1c1.charAt(1));
+    } else if (r1c1.length == 5 && r1c1.indexOf('C') == 3) {
+        return parseInt(r1c1.charAt(1) + r1c1.charAt(2));
+    } else if (r1c1.length == 6){
+        return parseInt(r1c1.charAt(1) + r1c1.charAt(2));
+    }
+}
+
+function getColumn(r1c1){
+    if (r1c1.length == 4){
+        return parseInt(r1c1.charAt(3));
+    } else if (r1c1.length == 5 && r1c1.indexOf('C') == 2) {  //R1C10
+        return parseInt(r1c1.charAt(3) + r1c1.charAt(4));
+    } else if (r1c1.length == 5 && r1c1.indexOf('C') == 3) {  //R10C1
+        return parseInt(r1c1.charAt(4));
+    } else if (r1c1.length == 6){
+        return parseInt(r1c1.charAt(4) + r1c1.charAt(5));
+    }
+}
+
+function getAdjacentCells(id){
+    var output = [];
+    var row = getRow(id);
+    var column = getColumn(id);
+    var minimumRow = getLowerAdjacent(row);
+    var maximumRow = getUpperAdjacent(row);
+    var minimumColumn = getLowerAdjacent(column);
+    var maximumColumn = getUpperAdjacent(column);
+    for (var r = minimumRow; r <= maximumRow; r++){
+        for (var c = minimumColumn; c <= maximumColumn; c++){
+            var r1c1 = 'R' + String(r) + 'C' + String(c);
+            if (r1c1 != id && isOutOfPlay(r1c1) == false){
+                output.push(r1c1);
+            }
+        }
+    }
+    return output;
+}
+
+function getAdjacentMineQuantity(id){
+    var quantity = 0;
+    var adjacentCells = getAdjacentCells(id);
+    for (var iterator = 0; iterator < adjacentCells.length; iterator++){
+        var cell = adjacentCells[iterator];
+        var index = mines.indexOf(cell);
+        if (index > -1) {
+            quantity++;
+        }
+    }
+    return quantity;
+}
+
+function getImageQuantity(quantity){
+    var imageFileName = 'img/' + String(quantity) + '.png';
+    return imageFileName;
+}
+
+function zeroCascade(id){
+    var cellQueue = [];
+    var adjacentCells = getAdjacentCells(id);
+    document.getElementById(id).src = 'img/0.png'
+    for (var iterator = 0; iterator < adjacentCells.length; iterator++){
+        var cell = adjacentCells[iterator];
+        if (getAdjacentMineQuantity(cell) == 0){
+            cellQueue.push(cell);
+            document.getElementById(cell).src = 'img/0.png'
+        } else {
+            document.getElementById(cell).src = getImageQuantity(getAdjacentMineQuantity(cell));
+        }
+    }
+    for (var i = 0; i < cellQueue.length; i++){
+        var cell = cellQueue[i];
+        var newAdjacentCells = getAdjacentCells(cell);
+        for (var j = 0; j < newAdjacentCells.length; j++){
+            var newCell = newAdjacentCells[j];
+            if (getAdjacentMineQuantity(newCell) == 0){
+                cellQueue.push(newCell);
+                document.getElementById(newCell).src = 'img/0.png'
+            } else {
+                document.getElementById(newCell).src = getImageQuantity(getAdjacentMineQuantity(newCell));
+            }
+            outOfPlay.push(newCell);
+        }
     }
 }
