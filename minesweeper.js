@@ -8,11 +8,14 @@ var outOfPlay = [];
 var mines = [];
 var firstCellPlayed = false;
 
+<<<<<<< HEAD
 function log(thing){
     console.log(thing);
 }
 
 
+=======
+>>>>>>> origin/master
 function execute() {
     gameInProgress = true;
     createTable(SIZE);
