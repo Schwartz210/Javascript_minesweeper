@@ -7,20 +7,67 @@ var flaggedCells = [];
 var outOfPlay = [];
 var mines = [];
 var firstCellPlayed = false;
+var secondsSinceGameStarted = 0;
+var timer;
 
-<<<<<<< HEAD
-function log(thing){
-    console.log(thing);
-}
-
-
-=======
->>>>>>> origin/master
+/**
+*onLoad initializer
+*/
 function execute() {
     gameInProgress = true;
-    createTable(SIZE);
+    runGUI(SIZE);
 }
 
+/**
+*onClick for newGameButton. Resets the game
+*/
+function newGame(){
+    for (var iterator = 0; iterator < allCells.length; iterator++){
+        var r1c1 = allCells[iterator];
+        document.getElementById(r1c1).src = 'img/grey.png'
+    }
+    flaggedCells = [];
+    outOfPlay = [];
+    mines = [];
+    gameInProgress = true;
+    firstCellPlayed = false;
+    secondsSinceGameStarted = 0;
+    timerTextView.innerHTML = '00:00';
+}
+
+/**
+*Executed every seconds. This function is primarily string formatting for the
+*timer.
+*/
+function timeIncrement(){
+    if (gameInProgress == false){
+        return false;
+    }
+    if (secondsSinceGameStarted >= 60){
+        var minutes = Math.floor(secondsSinceGameStarted / 60);
+        var seconds = secondsSinceGameStarted - (minutes * 60);
+    } else {
+        var minutes = 0;
+        var seconds = secondsSinceGameStarted;
+    }
+    if (minutes < 10){
+        var minutesString = '0' + String(minutes);
+    } else {
+        var minutesString = String(minutes);
+    }
+    if (seconds < 10){
+        var secondsString = '0' + String(seconds);
+    } else {
+        var secondsString = String(seconds);
+    }
+    var timerText = minutesString + ':' + secondsString;
+    document.getElementById('timerTextView').innerHTML = timerText;
+    secondsSinceGameStarted++;
+}
+/**
+* Evaluates if ID is flagged.
+* @Returns bool.
+*/
 function isFlagged(id) {
     var index = flaggedCells.indexOf(id);
     if (index > -1) {
@@ -30,6 +77,10 @@ function isFlagged(id) {
     }
 }
 
+/**
+* Evaluates if ID is outOfPlay.
+* @Returns bool.
+*/
 function isOutOfPlay(id) {
     var index = outOfPlay.indexOf(id);
     if (index > -1) {
@@ -39,6 +90,10 @@ function isOutOfPlay(id) {
     }
 }
 
+/**
+* Evaluates if ID is mine.
+* @Returns bool.
+*/
 function isMine(id){
     var index = mines.indexOf(id);
     if (index > -1) {
@@ -48,6 +103,9 @@ function isMine(id){
     }
 }
 
+/**
+* Left click handler
+*/
 function leftClick(){
     if (gameInProgress == false) {
         return false;
@@ -56,6 +114,8 @@ function leftClick(){
         makeMines();
         firstCellPlayed = true;
         document.getElementById(this.id).src = getImageQuantity(getAdjacentMineQuantity(this.id));
+        gameInProgress = true;
+        timer = setInterval(timeIncrement, 1000);
     } else if (isFlagged(this.id)) {
         return false;
     } else if (isMine(this.id)){
@@ -63,11 +123,17 @@ function leftClick(){
     } else if (getAdjacentMineQuantity(this.id) > 0){
         document.getElementById(this.id).src = getImageQuantity(getAdjacentMineQuantity(this.id));
         outOfPlay.push(this.id);
+        if (checkVictoryConditions()){
+            victory();
+        }
     } else if (getAdjacentMineQuantity(this.id) == 0){
         zeroCascade(this.id);
     }
 }
 
+/**
+* Right click handler
+*/
 function rightClick(id) {
     if (gameInProgress == false){
         return false;
@@ -82,9 +148,56 @@ function rightClick(id) {
     }
 }
 
-function createTable(size) {
+/**
+* Evaluates if board state meets victory conditions
+* @Returns bool
+*/
+
+function checkVictoryConditions(){
+    for (var iterator = 0; iterator < mines.length; iterator++){
+        var mine = mines[iterator];
+        if (isFlagged(mine) == false){
+            log(false);
+            return false;
+        }
+    }
+    for (var iterator = 0; iterator < flaggedCells.length; iterator++){
+
+        var flag = flaggedCells[iterator];
+        if (isMine(flag) == false){
+            return false
+        }
+    }
+    return true;
+}
+
+/**
+* Alerts user of vidtory progress, and stops timer, changes gameInProgress bool
+*/
+
+function victory(){
+    alert("You are victorious!");
+    gameInProgress = false;
+    clearInterval(timer);
+}
+
+/**
+* Creates board, newGameButton, and timer visual
+*/
+function runGUI(size) {
     var body = document.getElementsByTagName('body')[0];
+    var newGameButton = document.createElement('BUTTON');
+    var newGameButtonTextNode = document.createTextNode('New Game');
+    newGameButton.appendChild(newGameButtonTextNode);
+    newGameButton.onclick = newGame;
+    body.appendChild(newGameButton);
+    var timerTextView = document.createElement('p');
+    timerTextView.id = 'timerTextView';
+    var timerTextViewTextNode = document.createTextNode('00:00');
+    timerTextView.appendChild(timerTextViewTextNode);
+    body.appendChild(timerTextView);
     var table = document.createElement('table');
+    table.id = 'mainBoard';
     var tableBody = document.createElement('tbody');
     var text = '';
     for (var row = 0; row < size; row++) {
@@ -110,6 +223,9 @@ function createTable(size) {
     body.appendChild(table);
 }
 
+/**
+* Generate mines at game beginning
+*/
 function makeMines(){
     var ids = allCells.slice();
     ids.splice(ids.indexOf(outOfPlay[0]),1);
@@ -121,6 +237,9 @@ function makeMines(){
     }
 }
 
+/**
+* Lose condition and visuals
+*/
 function detonate(id){
     for (var iterator = 0; iterator < QUANTITYOFMINES; iterator++){
         var r1c1 = mines[iterator];
@@ -139,8 +258,12 @@ function detonate(id){
         }
     }
     gameInProgress = false;
+    clearInterval(timer);
 }
 
+/**
+* @Returns integer representing cell below current cell either row or column
+*/
 function getLowerAdjacent(rowOrColumn){
     var minimum = 0;
     if (rowOrColumn == 0){
@@ -151,6 +274,9 @@ function getLowerAdjacent(rowOrColumn){
     return minimum;
 }
 
+/**
+* @Returns integer representing cell above current cell either row or column
+*/
 function getUpperAdjacent(rowOrColumn){
     var maximum = 0;
     if (rowOrColumn == SIZE - 1){
@@ -161,6 +287,9 @@ function getUpperAdjacent(rowOrColumn){
     return maximum;
 }
 
+/**
+* @Returns integer representing row for inputted r1c1
+*/
 function getRow(r1c1){
     if (r1c1.length == 4){
         return parseInt(r1c1.charAt(1));
@@ -173,6 +302,9 @@ function getRow(r1c1){
     }
 }
 
+/**
+* @Returns integer representing column for inputted r1c1
+*/
 function getColumn(r1c1){
     if (r1c1.length == 4){
         return parseInt(r1c1.charAt(3));
@@ -185,6 +317,9 @@ function getColumn(r1c1){
     }
 }
 
+/**
+* @Returns adjacent cells for inputted r1c1
+*/
 function getAdjacentCells(id){
     var output = [];
     var row = getRow(id);
@@ -204,6 +339,9 @@ function getAdjacentCells(id){
     return output;
 }
 
+/**
+* @Returns quantity of mines in adjacent cells.
+*/
 function getAdjacentMineQuantity(id){
     var quantity = 0;
     var adjacentCells = getAdjacentCells(id);
@@ -217,11 +355,18 @@ function getAdjacentMineQuantity(id){
     return quantity;
 }
 
+/**
+* String formatting for image name
+*/
 function getImageQuantity(quantity){
     var imageFileName = 'img/' + String(quantity) + '.png';
     return imageFileName;
 }
 
+/**
+* All adcacent cells with zero mines are played as is the cell adjacent to them
+* are played. cascade only stops when it reaches a non-zero cell.
+*/
 function zeroCascade(id){
     var cellQueue = [];
     var adjacentCells = getAdjacentCells(id);
